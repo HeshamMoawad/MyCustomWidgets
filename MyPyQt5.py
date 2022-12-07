@@ -1,12 +1,27 @@
 import typing , sys
-import pandas
+import pandas , sqlite3
 from PyQt5.QtCore import (QCoreApplication, QEasingCurve, QPoint, QPointF, QEvent ,
                           QPropertyAnimation, QRect, QRectF, QObject ,
                           QSequentialAnimationGroup, QSize, Qt, pyqtProperty,
                           pyqtSignal, pyqtSlot , QThread)
 from PyQt5.QtGui import * 
 from PyQt5.QtWidgets import *
-from styles import Styles
+from selenium.webdriver import Chrome
+from selenium.webdriver.chrome.webdriver import WebDriver
+from selenium.webdriver.common.by import By
+# from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.remote.webelement import WebElement
+from selenium.common.exceptions import  NoSuchElementException
+# from telethon import TelegramClient, events, sync
+# from telethon.tl.functions.channels import JoinChannelRequest
+import random
+from MyPyQt5 import QThread,QObject,pyqtSignal
+import typing , time , sqlite3 , datetime , os
+
+# from styles import Styles
 
 
 
@@ -280,7 +295,7 @@ class QSideMenuNewStyle(QWidget):
         self.TopFrame.setStyleSheet("background-color:transparent;")
         self.horizontalLayout_2 = QHBoxLayout(self.TopFrame)
         self.MenuButton = QPushButton(self.TopFrame , text=" Menu")
-        self.MenuButton.setStyleSheet(Styles.BUTTON)
+        # self.MenuButton.setStyleSheet(Styles.BUTTON)
         self.MenuButton.setFlat(True)
         self.MenuButton.setShortcut("Ctrl+m")
         self.MenuButton.setFixedHeight(self.TopFrame.height()-15)
@@ -484,7 +499,7 @@ class MyMessageBox(QMessageBox):
         self.setText(text)
         self.exec_()        
     
-
+## --------------- New Class to Convert CustomContextMenu
 class MyCustomContextMenu(QObject):
 
     def __init__(self,Actions_arg:typing.List[str]) -> None:
@@ -494,6 +509,7 @@ class MyCustomContextMenu(QObject):
 
 
     def convert(self,Actions_arg:typing.List[str])-> typing.List[QAction]:
+        """Adding Actions to contextmenu and returns it into List[QAction]"""
         result = []
         for action in Actions_arg:
             Action = self.Menu.addAction(action)
@@ -501,12 +517,11 @@ class MyCustomContextMenu(QObject):
         return result
 
     def connect(self ,index_of_Action:int,func)-> None  :
+        """Adding Actions to contextmenu and returns it into List[QAction]"""
         self.Actions[index_of_Action].triggered.connect(func)
 
     def connectShortcut(self ,index_of_Action:int,shortcut)-> None  :
         self.Actions[index_of_Action].setShortcut(shortcut)
-        
-
         
     def multiConnect(self,functions:typing.List[typing.Callable] , range_of:typing.Optional[range]=None):
         for Action in (range(len(self.Actions)) if range_of == None else range_of):
@@ -519,15 +534,15 @@ class MyCustomContextMenu(QObject):
 
 
 
-
+## ------------- Custom Thread class
 class MyThread(QThread):
     statues = pyqtSignal(str)
-
     def __init__(self) -> None:
         super().__init__()
         self.msg = MyMessageBox()
 
     def kill(self,msg:typing.Optional[bool]):
+        """Method to kill Thread when it Running"""
         if self.isRunning():
             self.terminate()
             self.wait()
@@ -535,12 +550,14 @@ class MyThread(QThread):
                 self.msg.showInfo(text="سيبونا ناخد فرصتنا بقى")
 
     def start(self, priority: 'QThread.Priority' = ...) -> None:
+        """Method to start Thread when it NotRunning"""
         if self.isRunning():
             pass
         else:
             return super().start(priority)
 
 
+## ------------ QMainWindow custom widget
 class MyQMainWindow(QMainWindow):
     App = QApplication(sys.argv)
     Leaved = pyqtSignal()
@@ -555,22 +572,27 @@ class MyQMainWindow(QMainWindow):
         self.SetupUi()
 
     def leaveEvent(self, a0:QEvent) -> None: 
+        """Method that will running if your mouse Leaved From Widget """
         self.Leaved.emit()
         return super().leaveEvent(a0)
 
     def enterEvent(self, a0:QEvent) -> None:
+        """Method that will running if your mouse Entered Into Widget """
         self.Entered.emit()
         return super().enterEvent(a0)
     
     def setFrameLess(self):
+        """to set your window without frame"""
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
 
     def SetupUi(self):
+        """the method that will run Automaticly with calling class"""
         self.setCentralWidget(self.mainWidget)
         self.show()
         sys.exit(self.App.exec_())
 
     def setAppIcon(self,relativePath:str):
+        """To set Icon For Your App"""
         app_icon = QIcon()
         app_icon.addFile(relativePath, QSize(16,16))
         app_icon.addFile(relativePath, QSize(24,24))
@@ -579,11 +601,154 @@ class MyQMainWindow(QMainWindow):
         app_icon.addFile(relativePath, QSize(256,256))
         self.App.setWindowIcon(app_icon)
     
-
+## ---------------------- Validation some texts 
 class Validation(object):
+
     class TelegramValidation(object):
-        def channelNameOrLinkToHandle(self,name:str)->str:
-            if "@" in name:
-                return name
-            elif "https://t.me/"in name :
-                return name.replace("https://t.me/","@")
+
+        def channelNameOrLinkToHandle(self,text:str)->str:
+            """This Method takes TelegramLink or TelegramHandle and Returns into Handle 
+            examples :
+                ex: Input -> https://t.me/examplelink  return -> @examplelink
+                ex: Input -> @examplelink return -> @examplelink
+            """
+            if "@" in text:
+                return text
+            elif "https://t.me/"in text :
+                return text.replace("https://t.me/","@")
+
+
+
+## ---------------------- Used For some simple Batabase Actions 
+
+class DataBase():
+    def __init__(self,relativepath:str = "Data\Database.db") -> None:
+        self.con = sqlite3.connect(relativepath)
+        self.cur = self.con.cursor()
+
+
+    def exist(self,column,val):
+        """
+        Check if this Value is exist or not \n
+        1- If value is exist that will return -> True \n
+        2- If value is not exist that will return -> False
+
+        """
+        self.cur.execute(f"""SELECT * FROM data WHERE {column} = '{val}'; """)
+        return True if self.cur.fetchall() != [] else False
+    
+    
+    def add_to_db(self,table:str,**kwargs):
+        """
+        Adding values to Database :-\n
+        example : \n
+        'if you want to add number to (PhoneNumber)column in (userdata) table in DB'\n
+        add_to_db(\n
+            table = userdata ,\n
+            PhoneNumber = value , # number that you want to add
+        )
+        """
+        try:
+            self.cur.execute(f"""
+            INSERT INTO {table} {str(tuple(kwargs.keys())).replace("'","")}
+            VALUES {tuple(kwargs.values())}; 
+            """)
+            self.con.commit()
+        except Exception as e:
+            print(f"\n{e} \nError in Database \n")
+
+    def close(self):
+        """Closing DataBase"""
+        return self.con.close()
+
+## -------------------------- Used for make some console methods
+class JavaScriptCodeHandler(object):
+
+    def __init__(self,driver:WebDriver) -> None:
+        self.driver = driver
+    
+    def jscode(self,command):
+        """
+        Method to send commands to webdriver console\n example:\n
+        1- 'if you want to define variable to console'\n
+        jscode("var num = 1")\n
+        2- 'if you want to get value from console function'\n
+        return jscode("return value")\n
+         """
+        return self.driver.execute_script(command)
+    
+
+    def WaitingElement(self,timeout:int,val:str,by:str=By.XPATH)->typing.Optional[WebElement]:
+        """Waiting Element to be located and return it with WebElemnt instance"""
+        end_time = time.time() + timeout
+        while True:
+            if time.time() > end_time :
+                print("TimedOut and Breaked")
+                break
+            try:
+                result = self.driver.find_element(by,val)
+                break
+            except NoSuchElementException :
+                QThread.msleep(100)
+        return result
+    
+    def WaitingElements(self,timeout:int,val:str,by:str=By.XPATH)->typing.Optional[typing.List[WebElement]]:
+        """Waiting Elements to be located and return its with List[WebElemnt] instance"""
+        end_time = time.time() + timeout
+        while True:
+            if time.time() > end_time :
+                print("TimedOut and Breaked")
+                break
+            try:
+                result = self.driver.find_elements(by,val)
+                break
+            except NoSuchElementException :
+                QThread.msleep(100)
+        return result
+            
+    def WaitingMethod(self,timeout:int,func):
+        """Waiting Method to be done and return value from Method with same instance"""
+        end_time = time.time() + timeout
+        while True:
+            if time.time() > end_time :
+                print("TimedOut and Breaked")
+                break
+            try:
+                result = func()
+            except Exception as e :
+                pass
+        return result
+
+    
+##----------------- Base Class to start webdriver , scraping with some Options 
+
+class BaseScrapingClassQt5(QObject):
+    LeadSignal = pyqtSignal(list)
+    PersntageSignal = pyqtSignal(int)
+    def __init__(
+            self,
+            url:str ,
+            loginElementXpath:str ,
+            headless:bool = False ,
+            darkMode:bool = False ,
+            userProfile:str="Guest", 
+            ) -> None:
+        
+        option = Options()
+        option.headless = True if  headless == True else False
+        option.add_experimental_option("excludeSwitches", ["enable-logging"])
+        option.add_argument('--disable-logging')
+        option.add_argument('--force-dark-mode') if darkMode == True else None
+        option.add_argument(f"user-data-dir={os.getcwd()}\\Profiles\\{userProfile}")
+        self.driver = Chrome(ChromeDriverManager().install(),options=option)
+        self.js = JavaScriptCodeHandler(self.driver)
+        self.driver.maximize_window()
+        self.driver.get(url)
+        self.leadCount = 0
+        self.js.WaitingElement(600,loginElementXpath)
+        QThread.sleep(3)
+        super().__init__()
+
+    def exit(self):
+        """To exit webdriver"""
+        self.driver.quit()
