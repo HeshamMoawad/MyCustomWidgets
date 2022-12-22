@@ -85,14 +85,14 @@ class MyQTreeWidget(QTreeWidget,QWidget):
 
         self._ROW_INDEX += 1
         self.onLengthChanged.emit(self._ROW_INDEX)
-
+        
     
     
     @pyqtProperty(int)
     def length(self):
         return self._ROW_INDEX
     
-
+    
     def CounterLabel(self):
         self.counterLabel.setText(f"Counter : {self._ROW_INDEX}")
         
@@ -102,6 +102,9 @@ class MyQTreeWidget(QTreeWidget,QWidget):
             self.headerItem().setText(columns.index(column),str(column))
 
     def takeTopLevelItem(self, index: int) -> QTreeWidgetItem:
+        """
+        To Delete Row From Widget 
+        """
         self._ROW_INDEX -= 1
         self.onLengthChanged.emit(self._ROW_INDEX)
         if self.topLevelItem(index).childCount() >= 1:
@@ -109,12 +112,18 @@ class MyQTreeWidget(QTreeWidget,QWidget):
         return super().takeTopLevelItem(index)
 
     def childrenCount(self)-> int:
+        """
+        To get Children Count in All widget
+        """
         count = 0
         for row in range(self._ROW_INDEX):
             count = count + self.topLevelItem(row).childCount()
         return count
 
     def clear(self) -> None:
+        """
+        To Clear TreeWidget
+        """
         self._ROW_INDEX = 0
         self._CHILD_COUNT = 0
         self.onLengthChanged.emit(self._ROW_INDEX)
@@ -752,3 +761,225 @@ class BaseScrapingClassQt5(QObject):
     def exit(self):
         """To exit webdriver"""
         self.driver.quit()
+
+
+
+########################################################################
+class MyQToolButton(QToolButton):
+    Enterd = pyqtSignal()
+    Leaved = pyqtSignal()
+    __leavedString = ''
+    __entredString = ''
+
+    def __init__(self, parent: typing.Optional[QWidget] = ...) -> None:
+        super().__init__(parent)
+
+    def enterEvent(self, a0: QEvent) -> None:
+        self.Enterd.emit()
+        self.setText(self.__entredString)
+        return super().enterEvent(a0)
+        
+    def leaveEvent(self, a0: QEvent) -> None:
+        self.Leaved.emit()
+        self.setText(self.__leavedString)
+        return super().leaveEvent(a0)
+
+    def setTexts(self,leaved:str,entred:str):
+        self.__leavedString = leaved
+        self.__entredString = entred
+
+
+
+##################################################################################
+
+class QSideMenuEnteredLeaved(QWidget):
+
+    Buttons:typing.List[MyQToolButton] = []
+    Pages:typing.List[QWidget] = []
+    Toggles:typing.List[AnimatedToggle] = []
+    ToggleLabels:typing.List[QLabel] = []
+
+    def __init__(
+            self,
+            parent:QWidget,
+            ButtonsCount:int = 2,
+            PagesCount:int = 2 ,
+            ToggleCount:int = 2 ,
+            ButtonsSpacing:int = 3 ,
+            Duration:int = 400 ,
+            DefultIconPath:str = None ,
+            ClickIconPath:str = None ,  
+            StretchMenuForStacked:tuple=(1,5) ,
+            StretchTopForBottomFrame:tuple = (1,6),
+            ButtonsFrameFixedwidth:int=None,
+            ButtonsFrameFixedwidthMini:int=30,
+            TopFrameFixedHight:int= 40,
+            ExitButtonIconPath:str=None ,
+            ButtonsFixedHight:int=None , 
+            MaxButtonIconPath:str = None ,
+            Mini_MaxButtonIconPath:str = None ,
+            MiniButtonIconPath:str = None,
+            **kwargs,
+
+        ) -> None:
+        super().__init__(parent)
+        self.ButtonsFrameFixedwidthMini = ButtonsFrameFixedwidthMini
+        self.DefultIconPath = DefultIconPath
+        self.ClickIconPath = ClickIconPath
+        self.verticalLayout = QVBoxLayout(parent)
+        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout.setSpacing(0)
+        self.TopFrame = MyQFrame(parent,Draggable=True)
+        self.TopFrame.setFixedHeight(TopFrameFixedHight) if TopFrameFixedHight != None else None
+        self.horizontalLayout_2 = QHBoxLayout(self.TopFrame)
+        self.MainLabel = QLabel(self.TopFrame)
+        self.MainLabel.setText("Statues")
+        self.horizontalLayout_2.addWidget(self.MainLabel, 4 ,Qt.AlignmentFlag.AlignCenter|Qt.AlignmentFlag.AlignCenter)
+        self.MiniButton = QPushButton(self.TopFrame)
+        self.MiniButton.setFlat(True)
+        self.MiniButton.setFixedSize(QSize(20,20))
+        self.MiniButton.setIcon(QIcon(MiniButtonIconPath)) if MiniButtonIconPath != None else None
+        self.horizontalLayout_2.addWidget(self.MiniButton, 0,Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignCenter)
+        self.MiniButton.clicked.connect(parent.parent().showMinimized)
+        self.MaxButton = QPushButton(self.TopFrame)
+        self.MaxButton.setFlat(True)
+        self.MaxButton.setFixedSize(QSize(20,20))
+        self.MaxButton.setIcon(QIcon(MaxButtonIconPath)) if MaxButtonIconPath != None else None
+        self.MaxButton.clicked.connect(lambda : self.max_mini(self.parent().parent(),MaxButtonIconPath,Mini_MaxButtonIconPath,ButtonsFrameFixedwidth))
+        self.horizontalLayout_2.addWidget(self.MaxButton, 0,Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignCenter)
+        self.ExitButton = QPushButton(self.TopFrame)        
+        self.ExitButton.setFlat(True)
+        self.ExitButton.setFixedSize(QSize(20,20))
+        self.ExitButton.setIconSize(QSize(20,20))
+        self.ExitButton.setIcon(QIcon(ExitButtonIconPath)) if ExitButtonIconPath != None else None
+        self.ExitButton.clicked.connect(parent.close)
+        self.ExitButton.clicked.connect(QCoreApplication.instance().quit)        
+        self.horizontalLayout_2.addWidget(self.ExitButton, 0, Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignCenter)
+        self.horizontalLayout_2.setContentsMargins(5,5,6,5)
+        self.verticalLayout.addWidget(self.TopFrame)
+        self.BottomFrame = MyQFrame(parent)
+        self.horizontalLayout = QHBoxLayout(self.BottomFrame)
+        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
+        self.horizontalLayout.setSpacing(0)
+        self.ButtonsFrame = MyQFrame(self.BottomFrame)
+        self.ButtonsFrame.setFixedWidth(ButtonsFrameFixedwidth) if ButtonsFrameFixedwidth != None else None
+        self.verticalLayout_2 = QVBoxLayout(self.ButtonsFrame)
+        self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout_2.setSpacing(ButtonsSpacing)
+        for index in range(ButtonsCount) :
+            Button = MyQToolButton(self.ButtonsFrame)
+            Button.setTexts(f'{index}',f"Button {index}") 
+            # Button.setAutoRaise(True)
+            sizePolicy = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+            sizePolicy.setHeightForWidth(Button.sizePolicy().hasHeightForWidth())
+            Button.setFixedHeight(ButtonsFixedHight) if ButtonsFixedHight != None else None
+            Button.setSizePolicy(sizePolicy)
+            if index == ButtonsCount - 1 :
+                self.verticalLayout_2.addWidget(Button ,1, Qt.AlignmentFlag.AlignTop)
+            else :
+                self.verticalLayout_2.addWidget(Button ,0, Qt.AlignmentFlag.AlignTop)
+            self.Buttons.append(Button)
+ 
+        for index in range(ToggleCount):
+            ToggleLabel = QLabel(self.ButtonsFrame)
+            self.verticalLayout_2.addWidget(ToggleLabel,0,Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignCenter)
+            self.ToggleLabels.append(ToggleLabel)
+            Toggle = AnimatedToggle(self.ButtonsFrame)
+            sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            Toggle.setSizePolicy(sizePolicy)
+            self.verticalLayout_2.addWidget(Toggle,0,Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignCenter)
+            self.Toggles.append(Toggle)
+
+        self.horizontalLayout.addWidget(self.ButtonsFrame)
+        self.stackedWidget = QStackedWidget(self.BottomFrame)
+        for Page in range(PagesCount):
+            Page = QWidget()
+            self.stackedWidget.addWidget(Page)
+            self.Pages.append(Page)
+        self.horizontalLayout.addWidget(self.stackedWidget)
+        self.horizontalLayout.setStretch(0 , StretchMenuForStacked[0])
+        self.horizontalLayout.setStretch(1, StretchMenuForStacked[1])
+        self.verticalLayout.addWidget(self.BottomFrame)
+        self.verticalLayout.setStretch(0 ,StretchTopForBottomFrame[0])
+        self.verticalLayout.setStretch(1 , StretchTopForBottomFrame[1])
+        self.MAXWIDTH = self.ButtonsFrame.width()
+        self.NORMALWIDTH = self.MAXWIDTH
+        self.Animation = QPropertyAnimation(self,b"Width",self)
+        self.Animation.setDuration(Duration)
+        self.ButtonsFrame.Enterd.connect(self.entered)
+        self.ButtonsFrame.Leaved.connect(self.leaved)
+        self.ButtonsFrame.setFixedWidth(self.ButtonsFrameFixedwidthMini)
+        self.setCurrentPage(0)
+    
+    @pyqtProperty(int)
+    def Width(self):
+        return self.ButtonsFrame.width()
+    
+    @Width.setter
+    def Width(self,val):
+        self.ButtonsFrame.setFixedWidth(val)
+        
+    def leaved(self)-> None:
+        self.Animation.setStartValue(self.ButtonsFrameFixedwidthMini)
+        self.Animation.setEndValue(self.MAXWIDTH)
+        self.Animation.setDirection(self.Animation.Direction.Backward)
+        self.Animation.start()
+        
+        for tog in self.Toggles:
+            tog.hide()
+        for lbl in self.ToggleLabels:
+            lbl.hide()
+
+
+    def entered(self):
+        self.Animation.setStartValue(self.ButtonsFrameFixedwidthMini)
+        self.Animation.setEndValue(self.MAXWIDTH)
+        self.Animation.setDirection(self.Animation.Direction.Forward)
+        self.Animation.start()
+        for tog in self.Toggles:
+            tog.show()
+        for lbl in self.ToggleLabels:
+            lbl.hide()
+
+
+    @pyqtSlot(int,str)
+    def setButtonText(self,index:int,text:str)-> None:
+        self.getButton(index).setText(text)
+
+    @pyqtSlot(int,str)
+    def setButtonIcon(self,index:int,IconPath:str)-> None:
+        self.getButton(index).setIcon(QIcon(IconPath))
+        
+    def Connections(self,index:int,func):
+        self.getButton(index).clicked.connect(func)
+
+    def getButton(self,index:int)-> MyQToolButton :
+        return self.Buttons[index]
+
+    def getPage(self,index:int)-> QWidget:
+        return self.Pages[index]
+
+    def getToggle(self,index:int)-> AnimatedToggle :
+        return self.Toggles[index]
+
+    def getToggleLabel(self,index:int) -> QLabel:
+        return self.ToggleLabels[index]
+
+    @pyqtSlot(int)
+    def setCurrentPage(self,index:int):
+        self.stackedWidget.setCurrentIndex(index)
+
+    def max_mini(self , parent:QMainWindow , path1:str , path2:str , Fixedwidth):
+        if parent.isMaximized():
+            parent.showNormal()
+            self.MaxButton.setIcon(QIcon(path1))
+            self.MAXWIDTH = self.NORMALWIDTH
+        else :
+            parent.showMaximized()
+            self.MaxButton.setIcon(QIcon(path2))
+            self.MAXWIDTH = Fixedwidth + 150 if Fixedwidth is int else 200
+
+
+###################################################
+
+
